@@ -100,14 +100,16 @@ def linkHorizontalCircular(nodeList):
         nodeList[nodeIndex].prev_h = nodeList[prev]
         nodeList[nodeIndex].next_h = nodeList[next]
 
-def algorithmX(nodeOrigin, solutions, currentSelection):
-    print("LOOP:")
-    print(getMatrixString(nodeOrigin, colHeaders, linkedList))
-
+def algorithmX(nodeOrigin, solutions, currentSelection, onlyCountSolutions=False):
     #if empty, solution was found
     if nodeOrigin.next_h is nodeOrigin:
-        solutions.append(currentSelection.copy())
-        return solutions
+        if onlyCountSolutions:
+            solutions += 1
+            print(solutions/20574308184277971*100, "%")
+            return solutions
+        else:
+            solutions.append(currentSelection.copy())
+            return solutions
     else:
         invalid = False
         for node in nodeOrigin:
@@ -122,6 +124,17 @@ def algorithmX(nodeOrigin, solutions, currentSelection):
         col = nodeOrigin.next_h
 
         rowNode = col.next_v
+
+        choices = 0
+        alreadyChoiced = 0
+        if currentSelection == []:
+            currentRow = col
+            while True:
+                currentRow = currentRow.next_v
+                if currentRow.isColHeader:
+                    break
+
+                choices += 1
 
         while True:
             # add current row to current solution selection
@@ -138,15 +151,14 @@ def algorithmX(nodeOrigin, solutions, currentSelection):
                 removedRowsCols.append([None, []])
 
                 # go through rows that have a 1 in this column and delete
-                lastRow = currentCol.prev_v
-                currentRow = currentCol
+                currentRow = currentCol.colHeader
                 while True:
+                    currentRow = currentRow.next_v
+                    if currentRow.isColHeader:
+                        break
+
                     removeRow(currentRow)
                     removedRowsCols[-1][1].append(currentRow)
-
-                    if currentRow is lastRow:
-                        break
-                    currentRow = currentRow.next_v
 
                 removeCol(currentCol)
                 removedRowsCols[-1][0] = currentCol
@@ -155,34 +167,31 @@ def algorithmX(nodeOrigin, solutions, currentSelection):
                     break
                 currentCol = currentCol.next_h
 
-            algorithmX(nodeOrigin, solutions, currentSelection)
+            solutions = algorithmX(nodeOrigin, solutions, currentSelection, onlyCountSolutions)
 
             # revert selection list
             currentSelection.pop(-1)
 
             # revert column and row deletions
-            print("BEFORE:")
-            print(getMatrixString(nodeOrigin, colHeaders, linkedList))
             for nodeCol, nodeRowList in reversed(removedRowsCols):
                 addCol(nodeCol)
                 for nodeRow in reversed(nodeRowList):
                     addRow(nodeRow)
-            print("AFTER:")
-            print(getMatrixString(nodeOrigin, colHeaders, linkedList))
 
             # next row
             rowNode = rowNode.next_v
 
+            if choices != 0:
+                alreadyChoiced += 1
+                print("Percentage:", str(alreadyChoiced/choices*100))
+
             # if no more options return
             if rowNode.isColHeader:
-                print("no more solutions")
                 return solutions
 
 #region remove and add rows and columns
 
 def removeRow(node):
-    if node.isColHeader:
-        return
     initial = node
     current = node
 
@@ -208,8 +217,6 @@ def removeCol(node):
     return
 
 def addRow(node):
-    if node.isColHeader:
-        return
     initial = node
     current = node
 
@@ -278,7 +285,7 @@ def getMatrixString(origin, colHeaders, linkedList):
             string += "\n"
     return string
 
-def drawSolution(grid, triominoeList):
+def drawSolution(grid, triominoeList, title=""):
     # Make a 9x9 grid...
     nrows, ncols = len(grid), len(grid[1])
     image = np.zeros(nrows * ncols)
@@ -296,24 +303,24 @@ def drawSolution(grid, triominoeList):
     plt.matshow(image, cmap='tab20')
     plt.xticks(range(ncols), col_labels)
     plt.yticks(range(nrows), row_labels)
+    plt.title(title)
     plt.show()
 
 #endregion
 
-grid = getGeneratedGrid([9, 2])
+grid = getGeneratedGrid([9, 12])
 
 triominoePlacements = getPossibleTriominoePlacements(grid, triominoes)
 
 linkedList, colHeaders, origin = getDancingLinkList(grid, triominoePlacements)
 
-solList = algorithmX(origin, [], [])
+solNum = algorithmX(origin, 0, [], True)
 
+print("Solutions:", solNum)
 
-for index, sol in enumerate(solList):
-    triominoeList = []
-    for i in sol:
-        triominoeList.append(triominoePlacements[i.val[0]])
-
-    drawSolution(grid, triominoeList)
-
-    print(index)
+#for index, sol in enumerate(solList):
+#    triominoeList = []
+#    for i in sol:
+#        triominoeList.append(triominoePlacements[i.val[0]])
+#
+#    drawSolution(grid, triominoeList, str(index))
