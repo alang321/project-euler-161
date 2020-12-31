@@ -71,7 +71,7 @@ def getDancingLinkList(grid, triominoePlacements):
         for field in triomineFields:
             colIndex = colIndexPerField[field[0]][field[1]]
 
-            node = Node([rowIndex, colIndex])
+            node = Node([rowIndex, colIndex], colHeader=colHeaders[colIndex])
 
             #vertical
             node.prev_v = previousNodeCol[colIndex]
@@ -100,53 +100,85 @@ def linkHorizontalCircular(nodeList):
         nodeList[nodeIndex].prev_h = nodeList[prev]
         nodeList[nodeIndex].next_h = nodeList[next]
 
-def algorithmX(nodeOrigin):
-    partialSolution = []
-    while True:
-        print("LOOP:")
-        print(getMatrixString(nodeOrigin, colHeaders, linkedList))
+def algorithmX(nodeOrigin, solutions, currentSelection):
+    print("LOOP:")
+    print(getMatrixString(nodeOrigin, colHeaders, linkedList))
 
-
-        #if empty, solution was found
-        if nodeOrigin.next_h is nodeOrigin:
-            print("array has no more columns")
-            print([i.val[0] for i in partialSolution])
-            break
-        else:
-            invalid = False
-            for node in origin:
-                if node is origin:
-                    break
-                if node.next_v is node:
-                    invalid = True
-                    break
-            if invalid:
-                print("Combination:")
-                print(partialSolution)
-                print("does not work")
-        col = nodeOrigin.next_h
-        row = col.next_v
-
-        partialSolution.append(row) # fork is created
-
-        # go through columns that have a 1 in this row and delete
-        lastCol = row.prev_h
-        currentCol = row
-        while True:
-            #go through rows that have a 1 in this column and delete
-            lastRow = currentCol.prev_v
-            currentRow = currentCol
-            while True:
-                removeRow(currentRow)
-                if currentRow is lastRow:
-                    break
-                currentRow = currentRow.next_v
-
-            removeCol(currentCol)
-            if currentCol is lastCol:
+    #if empty, solution was found
+    if nodeOrigin.next_h is nodeOrigin:
+        solutions.append(currentSelection.copy())
+        return solutions
+    else:
+        invalid = False
+        for node in nodeOrigin:
+            if node is nodeOrigin:
                 break
-            currentCol = currentCol.next_h
-    return partialSolution
+            if node.next_v is node:
+                invalid = True
+                break
+        if invalid:
+            return solutions
+
+        col = nodeOrigin.next_h
+
+        rowNode = col.next_v
+
+        while True:
+            # add current row to current solution selection
+            currentSelection.append(rowNode)
+
+            # to keep track of what rows and columns are removed in each step
+            removedRowsCols = [] # [[col, [rows]], [col, [rows]], ...]
+
+            # go through columns that have a 1 in this row and delete
+            lastCol = rowNode.prev_h
+            currentCol = rowNode
+
+            while True:
+                removedRowsCols.append([None, []])
+
+                # go through rows that have a 1 in this column and delete
+                lastRow = currentCol.prev_v
+                currentRow = currentCol
+                while True:
+                    removeRow(currentRow)
+                    removedRowsCols[-1][1].append(currentRow)
+
+                    if currentRow is lastRow:
+                        break
+                    currentRow = currentRow.next_v
+
+                removeCol(currentCol)
+                removedRowsCols[-1][0] = currentCol
+
+                if currentCol is lastCol:
+                    break
+                currentCol = currentCol.next_h
+
+            algorithmX(nodeOrigin, solutions, currentSelection)
+
+            # revert selection list
+            currentSelection.pop(-1)
+
+            # revert column and row deletions
+            print("BEFORE:")
+            print(getMatrixString(nodeOrigin, colHeaders, linkedList))
+            for nodeCol, nodeRowList in reversed(removedRowsCols):
+                addCol(nodeCol)
+                for nodeRow in reversed(nodeRowList):
+                    addRow(nodeRow)
+            print("AFTER:")
+            print(getMatrixString(nodeOrigin, colHeaders, linkedList))
+
+            # next row
+            rowNode = rowNode.next_v
+
+            # if no more options return
+            if rowNode.isColHeader:
+                print("no more solutions")
+                return solutions
+
+#region remove and add rows and columns
 
 def removeRow(node):
     if node.isColHeader:
@@ -164,18 +196,45 @@ def removeRow(node):
     return
 
 def removeCol(node):
-    initial = node.prev_v
-    current = node.prev_v
+    current = node.colHeader
 
     while True:
         current.prev_h.next_h = current.next_h
         current.next_h.prev_h = current.prev_h
 
         current = current.next_v
+        if current.isColHeader:
+            break
+    return
+
+def addRow(node):
+    if node.isColHeader:
+        return
+    initial = node
+    current = node
+
+    while True:
+        current.prev_v.next_v = current
+        current.next_v.prev_v = current
+
+        current = current.next_h
         if initial is current:
             break
     return
 
+def addCol(node):
+    current = node.colHeader
+
+    while True:
+        current.prev_h.next_h = current
+        current.next_h.prev_h = current
+
+        current = current.next_v
+        if current.isColHeader:
+            break
+    return
+
+#endregion
 
 #region visualisation
 
@@ -247,10 +306,14 @@ triominoePlacements = getPossibleTriominoePlacements(grid, triominoes)
 
 linkedList, colHeaders, origin = getDancingLinkList(grid, triominoePlacements)
 
-sol = algorithmX(origin)
+solList = algorithmX(origin, [], [])
 
-triominoeList = []
-for i in sol:
-    triominoeList.append(triominoePlacements[i.val[0]])
 
-drawSolution(grid, triominoeList)
+for index, sol in enumerate(solList):
+    triominoeList = []
+    for i in sol:
+        triominoeList.append(triominoePlacements[i.val[0]])
+
+    drawSolution(grid, triominoeList)
+
+    print(index)
