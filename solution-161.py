@@ -105,7 +105,9 @@ def algorithmX(nodeOrigin):
     while True:
         print("LOOP:")
         print(getMatrixString(nodeOrigin, colHeaders, linkedList))
-        #if empty, so solution is found
+
+
+        #if empty, solution was found
         if nodeOrigin.next_h is nodeOrigin:
             print("array has no more columns")
             print([i.val[0] for i in partialSolution])
@@ -125,7 +127,7 @@ def algorithmX(nodeOrigin):
         col = nodeOrigin.next_h
         row = col.next_v
 
-        partialSolution.append(row)
+        partialSolution.append(row) # fork is created
 
         # go through columns that have a 1 in this row and delete
         lastCol = row.prev_h
@@ -173,6 +175,9 @@ def removeCol(node):
         if initial is current:
             break
     return
+
+
+#region visualisation
 
 def getMatrixString(origin, colHeaders, linkedList):
     width = len(colHeaders)
@@ -222,17 +227,19 @@ def drawSolution(grid, triominoeList):
     # Set every other cell to a random number (this would be your data)
     for index, triominoe in enumerate(triominoeList):
         for point in triominoe:
-            image[point[0] * ncols + point[1]] = index
+            image[point[0] * ncols + point[1]] = index%20
 
     # Reshape things into a 9x9 grid.
     image = image.reshape((nrows, ncols))
 
     row_labels = range(nrows)
     col_labels = range(ncols)
-    plt.matshow(image)
+    plt.matshow(image, cmap='tab20')
     plt.xticks(range(ncols), col_labels)
     plt.yticks(range(nrows), row_labels)
     plt.show()
+
+#endregion
 
 grid = getGeneratedGrid([9, 2])
 
